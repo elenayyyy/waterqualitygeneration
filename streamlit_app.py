@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
+
 # App Title
 st.title("💧Water Quality Generation")
 st.info("Generate data using the sidebar button to view visualizations and results.")
@@ -81,138 +82,136 @@ test_size = st.sidebar.slider("Test Size (%)", min_value=10, max_value=50, value
 train_size = 1 - test_size
 st.sidebar.write(f"Test: {test_size * 100}% / Train: {train_size * 100}%")
 
-# Ensure the dataset has enough samples to split based on selected test size
-if len(data) < 2:
-    st.error("The dataset does not have enough samples for splitting.")
-else:
-    # Button for Training the Model
-    start_training = st.sidebar.button("Generate Data and Train Models")
+# Button for Training the Model
+start_training = st.sidebar.button("Generate Data and Train Models")
 
-    # Define models to train (add all your models here)
-    models = {
-        "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
-        "RandomForestClassifier": RandomForestClassifier(random_state=42),
-        "LogisticRegression": LogisticRegression(random_state=42),
-        "SVC": SVC(random_state=42),
-        "KNeighborsClassifier": KNeighborsClassifier(),
-    }
+# Define models to train (add all your models here)
+models = {
+    "ExtraTreesClassifier": ExtraTreesClassifier(random_state=42),
+    "RandomForestClassifier": RandomForestClassifier(random_state=42),
+    "LogisticRegression": LogisticRegression(random_state=42),
+    "SVC": SVC(random_state=42),
+    "KNeighborsClassifier": KNeighborsClassifier(),
+}
 
-    # During training, store models and their metrics in session_state
-    # Inside the training loop
-    if start_training:
-        with st.spinner("Training models... Please wait!"):
-            # Start generating data and training the model
-            X = data[features]
-            y = data['Class']
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
+# During training, store models and their metrics in session_state
+# Inside the training loop
+if start_training:
+    with st.spinner("Training models... Please wait!"):
+        # Start generating data and training the model
+        X = data[features]
+        y = data['Class']
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-            # Train/Test Split
-            X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
+        # Train/Test Split
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=test_size, random_state=42)
 
-            # Initialize session state for learning curves and confusion matrices
-            if "learning_curves" not in st.session_state:
-                st.session_state["learning_curves"] = {}
-            if "confusion_matrices" not in st.session_state:
-                st.session_state["confusion_matrices"] = {}
+        # Initialize session state for learning curves and confusion matrices
+        if "learning_curves" not in st.session_state:
+            st.session_state["learning_curves"] = {}
+        if "confusion_matrices" not in st.session_state:
+            st.session_state["confusion_matrices"] = {}
 
-            # Loop through models to train them
-            for model_name, model in models.items():
-                try:
-                    start_time = time()
-                    model.fit(X_train, y_train)  # Train the model
-                    training_time = time() - start_time
+        # Loop through models to train them
+        for model_name, model in models.items():
+            try:
+                start_time = time()
+                model.fit(X_train, y_train)  # Train the model
+                training_time = time() - start_time
 
-                    # Save the trained model to session_state
-                    if "trained_models" not in st.session_state:
-                        st.session_state["trained_models"] = {}
-                    st.session_state["trained_models"][model_name] = model
+                # Save the trained model to session_state
+                if "trained_models" not in st.session_state:
+                    st.session_state["trained_models"] = {}
+                st.session_state["trained_models"][model_name] = model
 
-                    # Model Evaluation
-                    y_pred = model.predict(X_test)
-                    accuracy = accuracy_score(y_test, y_pred)
-                    class_report = classification_report(y_test, y_pred, output_dict=True)
+                # Model Evaluation
+                y_pred = model.predict(X_test)
+                accuracy = accuracy_score(y_test, y_pred)
+                class_report = classification_report(y_test, y_pred, output_dict=True)
 
-                    # Save metrics to session_state
-                    if "model_metrics" not in st.session_state:
-                        st.session_state["model_metrics"] = {}
-                    st.session_state["model_metrics"][model_name] = {
-                        "Accuracy": accuracy,
-                        "Classification Report": class_report,
-                        "Training Time": training_time
-                    }
+                # Save metrics to session_state
+                if "model_metrics" not in st.session_state:
+                    st.session_state["model_metrics"] = {}
+                st.session_state["model_metrics"][model_name] = {
+                    "Accuracy": accuracy,
+                    "Classification Report": class_report,
+                    "Training Time": training_time
+                }
 
-                    # Calculate learning curve
-                    train_sizes, train_scores, valid_scores = learning_curve(model, X_train, y_train, cv=5, n_jobs=-1)
-                    st.session_state["learning_curves"][model_name] = {
-                        "train_sizes": train_sizes,
-                        "train_scores": train_scores.mean(axis=1),
-                        "valid_scores": valid_scores.mean(axis=1)
-                    }
+                # Calculate learning curve
+                train_sizes, train_scores, valid_scores = learning_curve(model, X_train, y_train, cv=5, n_jobs=-1)
+                st.session_state["learning_curves"][model_name] = {
+                    "train_sizes": train_sizes,
+                    "train_scores": train_scores.mean(axis=1),
+                    "valid_scores": valid_scores.mean(axis=1)
+                }
 
-                    # Calculate confusion matrix
-                    cm = confusion_matrix(y_test, y_pred)
-                    st.session_state["confusion_matrices"][model_name] = cm
+                # Calculate confusion matrix
+                cm = confusion_matrix(y_test, y_pred)
+                st.session_state["confusion_matrices"][model_name] = cm
 
-                except Exception as e:
-                    st.error(f"Error while training {model_name}: {e}")
+            except Exception as e:
+                st.error(f"Error while training {model_name}: {e}")
 
-            # Now that models are saved, display confirmation
-            st.success("Model training completed and models saved!")
+        # Now that models are saved, display confirmation
+        st.success("Model training completed and models saved!")
 
-        # Show Results
-        st.write("### Dataset Split Information")
-        total_samples = len(data)
-        train_samples = len(X_train)
-        test_samples = len(X_test)
-        st.write(f"**Total Samples:** {total_samples}")
-        st.write(f"**Training Samples:** {train_samples} ({(train_samples/total_samples)*100:.2f}%)")
-        st.write(f"**Testing Samples:** {test_samples} ({(test_samples/total_samples)*100:.2f}%)")
 
-        # Show Generated Data Sample
-        st.write("### Generated Data Sample")
-        st.write("**Original Data (Random samples from each class):**")
-        st.dataframe(data.head())
-        st.write("**Scaled Data (using best model's scaler):**")
-        st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
+
+    # Show Results
+    st.write("### Dataset Split Information")
+    total_samples = len(data)
+    train_samples = len(X_train)
+    test_samples = len(X_test)
+    st.write(f"**Total Samples:** {total_samples}")
+    st.write(f"**Training Samples:** {train_samples} ({(train_samples/total_samples)*100:.2f}%)")
+    st.write(f"**Testing Samples:** {test_samples} ({(test_samples/total_samples)*100:.2f}%)")
+
+    # Show Generated Data Sample
+    st.write("### Generated Data Sample")
+    st.write("**Original Data (Random samples from each class):**")
+    st.dataframe(data.head())
+    st.write("**Scaled Data (using best model's scaler):**")
+    st.dataframe(pd.DataFrame(X_scaled[:5], columns=features))
+
 
         # Feature Visualization
-        st.write("### Feature Visualization")
-        col1, col2 = st.columns(2)
-        
-        # 2D Plot
-        with col1:
-            fig, ax = plt.subplots()
-            ax.scatter(data[features[0]], data[features[1]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
-            ax.set_xlabel(features[0])
-            ax.set_ylabel(features[1])
-            st.pyplot(fig)
-        
-        # 3D Plot
-        with col2:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(data[features[0]], data[features[1]], data[features[2]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}))
-            ax.set_xlabel(features[0])
-            ax.set_ylabel(features[1])
-            ax.set_zlabel(features[2])
-            st.pyplot(fig)
+    st.write("### Feature Visualization")
+    col1, col2 = st.columns(2)
+    
+    # 2D Plot
+    with col1:
+        fig, ax = plt.subplots()
+        ax.scatter(data[features[0]], data[features[1]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}), alpha=0.7)
+        ax.set_xlabel(features[0])
+        ax.set_ylabel(features[1])
+        st.pyplot(fig)
+    
+    # 3D Plot
+    with col2:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(data[features[0]], data[features[1]], data[features[2]], c=data['Class'].map({"Low": "blue", "Medium": "orange", "High": "green"}))
+        ax.set_xlabel(features[0])
+        ax.set_ylabel(features[1])
+        ax.set_zlabel(features[2])
+        st.pyplot(fig)
 
-        # Download Dataset
-        st.write("### Download Dataset")
-        st.download_button(
-            label="Download Original Dataset (CSV)",
-            data=data.to_csv(index=False).encode(),
-            file_name="original_data.csv",
-            mime="text/csv"
-        )
-        st.download_button(
-            label="Download Scaled Dataset (CSV)",
-            data=pd.DataFrame(X_scaled, columns=features).to_csv(index=False).encode(),
-            file_name="scaled_data.csv",
-            mime="text/csv"
-        )
-
+    # Download Dataset
+    st.write("### Download Dataset")
+    st.download_button(
+        label="Download Original Dataset (CSV)",
+        data=data.to_csv(index=False).encode(),
+        file_name="original_data.csv",
+        mime="text/csv"
+    )
+    st.download_button(
+        label="Download Scaled Dataset (CSV)",
+        data=pd.DataFrame(X_scaled, columns=features).to_csv(index=False).encode(),
+        file_name="scaled_data.csv",
+        mime="text/csv"
+    )
     
     # Dataset Statistics
     st.write("### Dataset Statistics")
